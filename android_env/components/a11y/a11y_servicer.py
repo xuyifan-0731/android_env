@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ class A11yServicer(a11y_pb2_grpc.A11yServiceServicer):
       request: android_accessibility_forest_pb2.AndroidAccessibilityForest,
       context: grpc.ServicerContext,
   ) -> a11y_pb2.ForestResponse:
+    # import pdb
+    # pdb.set_trace()
     self._process_forest(request)
     return a11y_pb2.ForestResponse()
 
@@ -190,7 +192,6 @@ class A11yServicer(a11y_pb2_grpc.A11yServiceServicer):
       self, forest: android_accessibility_forest_pb2.AndroidAccessibilityForest
   ) -> None:
     """Adds the given forest to the internal buffer of forests."""
-
     if not self._paused:
       with self._lock_forests:
         if self._latest_forest_only:

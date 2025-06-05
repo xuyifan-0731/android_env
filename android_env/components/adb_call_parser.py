@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ class AdbCallParser:
 
     response = adb_pb2.AdbResponse(status=adb_pb2.AdbResponse.Status.OK)
     command_type = request.WhichOneof('command')
-    logging.debug('AdbRequest command type: %s', command_type)
+    logging.info('AdbRequest command type: %s', command_type)
     if command_type is None:
       response.status = adb_pb2.AdbResponse.Status.UNKNOWN_COMMAND
       response.error_message = 'AdbRequest.command is None.'
@@ -280,15 +280,7 @@ class AdbCallParser:
             ['install', '-r', '-t', '-g', fpath], timeout=timeout
         )
       case 'blob':
-
-        # `delete_on_close` was only added in Python 3.12 so we add a switch
-        # here to still support previous Python versions.
-        if sys.version_info >= (3, 12):
-          kwargs = {'suffix': '.apk', 'delete_on_close': False}
-        else:
-          kwargs = {'suffix': '.apk'}
-
-        with tempfile.NamedTemporaryFile(**kwargs) as f:
+        with tempfile.NamedTemporaryFile(suffix='.apk') as f:
           fpath = f.name
           f.write(install_apk.blob.contents)
 
@@ -584,7 +576,7 @@ class AdbCallParser:
     # Issue `adb pull` command to copy it to a temporary file.
     with tempfile.NamedTemporaryFile(delete=False) as f:
       fname = f.name
-      logging.debug('Downloading %r to %r.', path, fname)
+      logging.info('Downloading %r to %r.', path, fname)
       response, _ = self._execute_command(['pull', path, fname],
                                           timeout=timeout)
     # Read the content of the file.

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ class AdbController:
     """Instantiates an AdbController object."""
 
     self._config = config
+    # logging.set_verbosity('debug')
     logging.info('config: %r', self._config)
 
     # Unset problematic environment variables. ADB commands will fail if these
@@ -110,10 +111,12 @@ class AdbController:
       The output of running such command as a binary string.
     """
     timeout = self._config.default_timeout if timeout is None else timeout
-    command = self.command_prefix(include_device_name=device_specific) + args
+    command = self.command_prefix(include_device_name=True)[0].split(' ') + self.command_prefix(include_device_name=True)[1:] + args
+    #command = self.command_prefix(include_device_name=False)[0].split(' ') + args
+    #command = command[0].split(' ') + args
     command_str = 'adb ' + ' '.join(command[1:])
 
-    n_retries = 2
+    n_retries = 5
     n_tries = 1
     latest_error = None
     while n_tries <= n_retries:
@@ -128,22 +131,34 @@ class AdbController:
         logging.debug('ADB command output: %s', cmd_output)
         return cmd_output
       except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        logging.exception(
-            'Failed to execute ADB command (try %r of 3): [%s]',
-            n_tries, command_str)
-        if e.stdout is not None:
-          logging.error('**stdout**:')
-          for line in e.stdout.splitlines():
-            logging.error('    %s', line)
-        if e.stderr is not None:
-          logging.error('**stderr**:')
-          for line in e.stderr.splitlines():
-            logging.error('    %s', line)
-        n_tries += 1
         latest_error = e
-        if device_specific and n_tries <= n_retries:
-          self._restart_server(timeout=timeout)
-
+        if n_tries <= n_retries:
+          logging.exception(
+              'Failed to execute ADB command (try %r of 5): [%s]',
+              n_tries, command_str)
+          time.sleep(2)
+          n_tries += 1
+        else:
+          logging.exception(
+              'Failed to execute ADB command (try %r of 3): [%s]',
+              n_tries, command_str)
+          if e.stdout is not None:
+            logging.error('**stdout**:')
+            for line in e.stdout.splitlines():
+              logging.error('    %s', line)
+          if e.stderr is not None:
+            logging.error('**stderr**:')
+            for line in e.stderr.splitlines():
+              logging.error('    %s', line)
+          
+          
+        
+        #if device_specific and n_tries <= n_retries:
+          #self._restart_server(timeout=timeout)
+    print(f'Error executing adb command: [{command_str}]\n'
+        f'Caused by: {latest_error}\n'
+        f'adb stdout: [{latest_error.stdout}]\n'
+        f'adb stderr: [{latest_error.stderr}]')
     raise errors.AdbControllerError(
         f'Error executing adb command: [{command_str}]\n'
         f'Caused by: {latest_error}\n'

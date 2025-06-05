@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,24 +24,29 @@ import urllib
 from absl import logging
 from android_env import env_interface
 from android_env.components import action_type as android_action_type_lib
+from android_env.components.a11y import a11y_events
+from android_env.components.a11y import a11y_forests
+from android_env.components.a11y import a11y_servicer
 from android_env.proto import adb_pb2
 from android_env.proto.a11y import a11y_pb2_grpc
 from android_env.wrappers import base_wrapper
-from android_env.wrappers.a11y import a11y_events
-from android_env.wrappers.a11y import a11y_forests
-from android_env.wrappers.a11y import a11y_servicer
 import dm_env
 import grpc
 import numpy as np
 import portpicker
-
+import os
 
 def _get_accessibility_forwarder_apk() -> bytes:
   logging.info('Downloading accessibility forwarder apk....')
-  with urllib.request.urlopen(
-      'https://storage.googleapis.com/android_env-tasks/2024.05.13-accessibility_forwarder.apk'
-  ) as response:
-    return response.read()
+  apk_path = '/raid/xuyifan/Android-Lab-main/tmp/2024.05.13-accessibility_forwarder.apk'
+  if os.path.exists(apk_path):
+    with open(apk_path, 'rb') as f:
+      return f.read()
+  else:
+    with urllib.request.urlopen(
+        'https://storage.googleapis.com/android_env-tasks/2024.05.13-accessibility_forwarder.apk'
+    ) as response:
+      return response.read()
 
 
 class EnableNetworkingError(ValueError):
@@ -87,7 +92,6 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
       a11y_info_timeout: float | None = None,
       max_enable_networking_attempts: int = 10,
       latest_a11y_info_only: bool = False,
-      grpc_server_ip: str = '10.0.2.2',
   ):
     """Initializes wrapper.
 
@@ -116,14 +120,8 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
         an EnableNetworkingError.
       latest_a11y_info_only: When True, the a11y servicer is setup to save only
         the latest tree it has received from the Android app.
-      grpc_server_ip: The IP address of the gRPC server which will be
-        broadcasted to the AccessibilityForwarder app where it should log the
-        a11y info. By default, this is set to the IP address of the AVD's host
-        machine which is 10.0.2.2: See
-        https://developer.android.com/studio/run/emulator-networking#networkaddresses.
     """
     self._env = env
-    self._grpc_server_ip = grpc_server_ip
     if install_a11y_forwarding:
       self._install_a11y_forwarding_apk()
       time.sleep(10.0)
@@ -143,8 +141,7 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
     server_credentials = grpc.local_server_credentials()
     self._port = portpicker.pick_unused_port()
     logging.info('Using port %s', self._port)
-    uri_address = f'[::]:{self._port}'
-    self._server.add_secure_port(uri_address, server_credentials)
+    self._server.add_insecure_port(f'0.0.0.0:{self._port}')
     logging.info('Starting server')
     self._server.start()
     logging.info('Server now running.')
@@ -272,9 +269,27 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
         )
     )
     time.sleep(1.0)
+    self.execute_adb_call(
+        adb_pb2.AdbRequest(
+            generic=adb_pb2.AdbRequest.GenericRequest(
+                args=[
+                    'shell',
+                    'su',
+                    '0',
+                    'cmd',
+                    '-w',
+                    'wifi',
+                    'connect-network',
+                    'AndroidWifi',
+                    'open'
+                ]
+            )
+        )
+    )
+    time.sleep(5)
 
   def _configure_grpc(self) -> None:
-    """Configure networking and set the gRPC ip and port on AVD or device."""
+    """Configure networking and set the gRPC port in the AVD."""
 
     if self._disable_other_network_traffic:
       self.execute_adb_call(
@@ -290,7 +305,7 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
                       '-p',
                       'tcp',
                       '-d',
-                      self._grpc_server_ip,
+                      '172.17.0.1',
                       '--dport',
                       str(self._port),
                       '-j',
@@ -323,7 +338,7 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
             settings=adb_pb2.AdbRequest.SettingsRequest(
                 name_space=adb_pb2.AdbRequest.SettingsRequest.Namespace.GLOBAL,
                 put=adb_pb2.AdbRequest.SettingsRequest.Put(
-                    key='no_proxy', value=f'{self._grpc_server_ip}:{self._port}'
+                    key='no_proxy', value=f'172.17.0.1:{self._port}'
                 ),
             )
         )
@@ -333,8 +348,9 @@ class A11yGrpcWrapper(base_wrapper.BaseWrapper):
         adb_pb2.AdbRequest(
             send_broadcast=adb_pb2.AdbRequest.SendBroadcast(
                 action=(
-                    'accessibility_forwarder.intent.action.SET_GRPC --ei'
-                    f' "port" {self._port} --es "host" {self._grpc_server_ip}'
+                    'accessibility_forwarder.intent.action.SET_GRPC'
+                    f' --es "host" "172.17.0.1"'  # docker host ip
+                    f' --ei "port" {self._port}'
                 ),
                 component=(
                     'com.google.androidenv.accessibilityforwarder/com.google.androidenv.accessibilityforwarder.FlagsBroadcastReceiver'

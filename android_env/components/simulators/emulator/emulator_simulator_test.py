@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -87,9 +87,9 @@ class EmulatorSimulatorTest(absltest.TestCase):
     simulator = emulator_simulator.EmulatorSimulator(config)
     self.assertNotEmpty(simulator.adb_device_name())
 
-  def test_logfile_path(self):
-    """The log file's path should correspond to the one from the config."""
-
+  @mock.patch.object(os.path, 'exists', autospec=True, return_value=True)
+  @mock.patch.object(builtins, 'open', autospec=True)
+  def test_logfile_path(self, mock_open, unused_mock_exists):
     config = config_classes.EmulatorConfig(
         logfile_path='fake/logfile/path',
         emulator_launcher=config_classes.EmulatorLauncherConfig(
@@ -101,15 +101,11 @@ class EmulatorSimulatorTest(absltest.TestCase):
         ),
     )
     simulator = emulator_simulator.EmulatorSimulator(config)
-
-    with mock.patch.object(
-        os.path, 'exists', autospec=True, return_value=True
-    ), mock.patch.object(builtins, 'open', autospec=True) as mock_open:
-      mock_file = mock_open.return_value.__enter__.return_value
-      mock_file.read.return_value = b'fake_logs'
-      logs = simulator.get_logs()
-      mock_open.assert_called_once_with('fake/logfile/path', 'rb')
-      self.assertEqual(logs, 'fake_logs')
+    mock_open.return_value.__enter__.return_value.read.return_value = (
+        'fake_logs'.encode('utf-8'))
+    logs = simulator.get_logs()
+    mock_open.assert_called_once_with('fake/logfile/path', 'rb')
+    self.assertEqual(logs, 'fake_logs')
 
   @mock.patch.object(portpicker, 'is_port_free', return_value=True)
   def test_grpc_port(self, unused_mock_portpicker):

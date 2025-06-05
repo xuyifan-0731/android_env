@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ from unittest import IsolatedAsyncioTestCase, mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+from android_env.components.a11y import a11y_servicer
 from android_env.proto.a11y import a11y_pb2
 from android_env.proto.a11y import android_accessibility_forest_pb2
-from android_env.wrappers.a11y import a11y_servicer
 import grpc
 
 

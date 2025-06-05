@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ class AdbLogStream(log_stream.LogStream):
 
   def __init__(self, adb_command_prefix: list[str], verbose: bool = False):
     super().__init__(verbose=verbose)
-    self._adb_command_prefix = adb_command_prefix
+    self._adb_command_prefix = adb_command_prefix[0].split(' ') + adb_command_prefix[1:]
 
   def _get_stream_output(self):
 

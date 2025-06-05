@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -98,13 +98,8 @@ class AdbCallParserTest(parameterized.TestCase):
         ['install', '-r', '-t', '-g', '/my/home/test.apk'], None
     )
     # pytype: disable=attribute-error
-    expected_tempfile_kwargs = (
-        {'suffix': '.apk', 'delete_on_close': False}
-        if sys.version_info > (3, 12)
-        else {'suffix': '.apk'}
-    )
     mock_tempfile.assert_has_calls([
-        mock.call(**expected_tempfile_kwargs),  # Constructor
+        mock.call(suffix='.apk'),  # Constructor
         mock.call().__enter__(),  # Enter context
         mock.call().__enter__().write(blob_content),  # Call write function
         mock.call().__exit__(None, None, None),  # Exit context

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2025 DeepMind Technologies Limited.
+# Copyright 2024 DeepMind Technologies Limited.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -187,6 +187,7 @@ class EmulatorSimulator(base_simulator.BaseSimulator):
       return f'Logfile does not exist: {self._logfile_path}.'
 
   def adb_device_name(self) -> str:
+    #return 'localhost:%s' % (self._config.emulator_launcher.adb_port - 1)
     return 'emulator-%s' % (self._config.emulator_launcher.adb_port - 1)
 
   def create_adb_controller(self):
