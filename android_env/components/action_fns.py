@@ -21,6 +21,7 @@ from android_env.components import errors
 from android_env.components import pixel_fns
 from android_env.components.simulators import base_simulator
 import numpy as np
+import time
 
 
 def send_action_to_simulator(
@@ -44,26 +45,29 @@ def send_action_to_simulator(
     num_fingers: The number of fingers used in this simulator.
   """
 
-  try:
-    match action['action_type']:
-      # If the action is a TOUCH or LIFT, send a touch event to the simulator.
-      case action_type_lib.ActionType.TOUCH | action_type_lib.ActionType.LIFT:
+  max_retries = 5
+  for attempt in range(max_retries):
+    try:
+      action_type = action['action_type']
+      if action_type in (action_type_lib.ActionType.TOUCH, action_type_lib.ActionType.LIFT):
         prepared_action = _prepare_touch_action(
             action, screen_width, screen_height, num_fingers
         )
         simulator.send_touch(prepared_action)
-      # If the action is a key event, send a key event to the simulator.
-      case action_type_lib.ActionType.KEYDOWN:
+      elif action_type == action_type_lib.ActionType.KEYDOWN:
         simulator.send_key(action['keycode'].item(0), event_type='keydown')
-      case action_type_lib.ActionType.KEYUP:
+      elif action_type == action_type_lib.ActionType.KEYUP:
         simulator.send_key(action['keycode'].item(0), event_type='keyup')
-      case action_type_lib.ActionType.KEYPRESS:
+      elif action_type == action_type_lib.ActionType.KEYPRESS:
         simulator.send_key(action['keycode'].item(0), event_type='keypress')
-  except errors.SendActionError:
-    logging.exception('Unable to execute action: %r', action)
-    return False
-
-  return True
+      return True
+    except errors.SendActionError:
+      logging.exception('Unable to execute action (attempt %d/%d): %r', attempt + 1, max_retries, action)
+      if attempt < max_retries - 1:
+        time.sleep(1)
+      else:
+        raise errors.SendActionError(f"Unable to execute action (attempt {attempt + 1}/{max_retries}): {action}")
+  return False
 
 
 def _prepare_touch_action(

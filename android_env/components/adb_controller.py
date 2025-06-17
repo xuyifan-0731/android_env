@@ -133,28 +133,29 @@ class AdbController:
       except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         latest_error = e
         if n_tries <= n_retries:
-          logging.exception(
-              'Failed to execute ADB command (try %r of 5): [%s]',
-              n_tries, command_str)
-          time.sleep(2)
+          time.sleep(10)
           n_tries += 1
-        else:
-          logging.exception(
-              'Failed to execute ADB command (try %r of 3): [%s]',
-              n_tries, command_str)
-          if e.stdout is not None:
-            logging.error('**stdout**:')
-            for line in e.stdout.splitlines():
-              logging.error('    %s', line)
-          if e.stderr is not None:
-            logging.error('**stderr**:')
-            for line in e.stderr.splitlines():
-              logging.error('    %s', line)
+          print(
+            'Failed to execute ADB command (try %r of 5): [%s]',
+            n_tries, command_str)
+          print(e)
+        logging.exception(
+            'Failed to execute ADB command (try %r of 5): [%s]',
+            n_tries, command_str)
+        if e.stdout is not None:
+          logging.error('**stdout**:')
+          for line in e.stdout.splitlines():
+            logging.error('    %s', line)
+        if e.stderr is not None:
+          logging.error('**stderr**:')
+          for line in e.stderr.splitlines():
+            logging.error('    %s', line)
           
           
         
         #if device_specific and n_tries <= n_retries:
           #self._restart_server(timeout=timeout)
+    #import pdb; pdb.set_trace()
     print(f'Error executing adb command: [{command_str}]\n'
         f'Caused by: {latest_error}\n'
         f'adb stdout: [{latest_error.stdout}]\n'
